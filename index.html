@@ -51,15 +51,6 @@
                 <span id="button-text">Analyze</span>
             </button>
         </form>
-
-        <!-- Main Loader (for initial analysis) -->
-        <div id="main-loader" class="text-center my-8 hidden">
-             <svg class="animate-spin h-10 w-10 text-red-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p class="mt-2 text-gray-400">Fetching video details...</p>
-        </div>
         
         <!-- Error Message Box -->
         <div id="error-box" class="hidden mt-8 bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg" role="alert">
@@ -90,7 +81,6 @@
         // --- DOM Element References ---
         const form = document.getElementById('url-form');
         const urlInput = document.getElementById('video-url');
-        const mainLoader = document.getElementById('main-loader');
         const errorBox = document.getElementById('error-box');
         const errorMessage = document.getElementById('error-message');
         const resultsSection = document.getElementById('results-section');
@@ -101,7 +91,7 @@
         const submitButton = form.querySelector('button');
         const buttonText = document.getElementById('button-text');
         const searchIcon = document.getElementById('search-icon');
-        const buttonLoader = submitButton.querySelector('#button-loader'); // More specific selector
+        const buttonLoader = submitButton.querySelector('#button-loader');
 
         // --- Event Listener for Form Submission ---
         form.addEventListener('submit', async (e) => {
@@ -121,10 +111,10 @@
             
             // Reset UI state
             resetUI();
-            setLoading(true, 'button'); // Use button loader for analysis
+            setLoading(true);
 
             try {
-                // Using noembed.com to get basic video metadata first
+                // Step 1: Use a simple metadata service to get title/thumbnail quickly.
                 const embedApiUrl = `https://noembed.com/embed?url=${encodeURIComponent(videoUrl)}`;
                 const response = await fetch(embedApiUrl);
                 if (!response.ok) {
@@ -142,7 +132,7 @@
             } catch (error) {
                 showError(error.message);
             } finally {
-                setLoading(false, 'button');
+                setLoading(false);
             }
         });
 
@@ -151,25 +141,19 @@
         function resetUI() {
             errorBox.classList.add('hidden');
             resultsSection.classList.add('hidden');
-            mainLoader.classList.add('hidden');
             downloadOptionsContainer.innerHTML = ''; // Clear old buttons
         }
 
-        function setLoading(isLoading, type = 'main') {
-            if (type === 'button') {
-                submitButton.disabled = isLoading;
-                if (isLoading) {
-                    buttonText.textContent = 'Analyzing...';
-                    searchIcon.classList.add('hidden');
-                    buttonLoader.classList.remove('hidden');
-                } else {
-                    buttonText.textContent = 'Analyze';
-                    searchIcon.classList.remove('hidden');
-                    buttonLoader.classList.add('hidden');
-                }
-            } else { // 'main' loader
-                if(isLoading) mainLoader.classList.remove('hidden');
-                else mainLoader.classList.add('hidden');
+        function setLoading(isLoading) {
+            submitButton.disabled = isLoading;
+            if (isLoading) {
+                buttonText.textContent = 'Analyzing...';
+                searchIcon.classList.add('hidden');
+                buttonLoader.classList.remove('hidden');
+            } else {
+                buttonText.textContent = 'Analyze';
+                searchIcon.classList.remove('hidden');
+                buttonLoader.classList.add('hidden');
             }
         }
 
@@ -224,9 +208,8 @@
             errorBox.classList.add('hidden'); // Hide main error on new attempt
 
             try {
-                // Using a reliable public instance of Cobalt API.
-                // For production, host your own backend to avoid dependency on third parties.
-                const downloadApiUrl = 'https://co.wuk.sh/api/json';
+                // Step 2: Call the download processing API when a button is clicked.
+                const downloadApiUrl = 'https://api.cobalt.tools/api/json';
 
                 const payload = {
                     url: url,
@@ -245,4 +228,29 @@
                     body: JSON.stringify(payload)
                 });
 
-                const data = await response.json
+                const data = await response.json();
+
+                // Handle API response
+                if (data.status === 'error') {
+                    throw new Error(data.text || 'The API returned an error. The video might be region-locked or private.');
+                }
+
+                if (data.status === 'redirect' || data.status === 'stream') {
+                    // Open the download link in a new tab
+                    window.open(data.url, '_blank');
+                } else {
+                     throw new Error(`Unexpected API status: ${data.status}. Please try again.`);
+                }
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                // Reset button state
+                buttonEl.disabled = false;
+                buttonSpan.classList.remove('hidden');
+                buttonLoader.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
