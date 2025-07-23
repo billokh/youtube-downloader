@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Downloader</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Style for the button-specific loader */
+        .btn-loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #ef4444; /* Red color */
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+
+    <!-- Main Container -->
+    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-3xl w-full">
+
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-red-600">YouTube Video Downloader</h1>
+            <p class="text-gray-400">Paste a YouTube link to get download options.</p>
+        </div>
+
+        <!-- URL Input Form -->
+        <form id="url-form" class="flex flex-col sm:flex-row gap-4 mb-8">
+            <input id="video-url" type="text" placeholder="https://www.youtube.com/watch?v=..." class="flex-grow bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition duration-300 w-full">
+            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 flex items-center justify-center w-full sm:w-auto">
+                <svg id="search-icon" class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <svg id="button-loader" class="animate-spin h-6 w-6 mr-2 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span id="button-text">Analyze</span>
+            </button>
+        </form>
+
+        <!-- Main Loader (for initial analysis) -->
+        <div id="main-loader" class="text-center my-8 hidden">
+             <svg class="animate-spin h-10 w-10 text-red-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-2 text-gray-400">Fetching video details...</p>
+        </div>
+        
+        <!-- Error Message Box -->
+        <div id="error-box" class="hidden mt-8 bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg" role="alert">
+            <strong class="font-bold">Error!</strong>
+            <span id="error-message" class="block sm:inline ml-2"></span>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="hidden">
+            <!-- Video Info Card -->
+            <div id="video-info" class="bg-gray-800 rounded-lg overflow-hidden flex flex-col md:flex-row items-center gap-6 p-6 mb-8">
+                <img id="video-thumbnail" src="https://placehold.co/320x180/1f2937/4b5563?text=Thumbnail" alt="Video Thumbnail" class="w-full md:w-48 h-auto rounded-md object-cover" onerror="this.onerror=null;this.src='https://placehold.co/320x180/1f2937/4b5563?text=Thumbnail';">
+                <div class="text-center md:text-left">
+                    <h2 id="video-title" class="text-xl font-bold text-white mb-1">Video Title Goes Here</h2>
+                    <p id="video-author" class="text-gray-400">by Author Name</p>
+                </div>
+            </div>
+            
+            <!-- Download Options -->
+            <div id="download-options" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Buttons will be inserted here by JavaScript -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const form = document.getElementById('url-form');
+        const urlInput = document.getElementById('video-url');
+        const mainLoader = document.getElementById('main-loader');
+        const errorBox = document.getElementById('error-box');
+        const errorMessage = document.getElementById('error-message');
+        const resultsSection = document.getElementById('results-section');
+        const videoThumbnail = document.getElementById('video-thumbnail');
+        const videoTitle = document.getElementById('video-title');
+        const videoAuthor = document.getElementById('video-author');
+        const downloadOptionsContainer = document.getElementById('download-options');
+        const submitButton = form.querySelector('button');
+        const buttonText = document.getElementById('button-text');
+        const searchIcon = document.getElementById('search-icon');
+        const buttonLoader = submitButton.querySelector('#button-loader'); // More specific selector
+
+        // --- Event Listener for Form Submission ---
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const videoUrl = urlInput.value.trim();
+
+            // Validate input
+            if (!videoUrl) {
+                showError('Please enter a YouTube video URL.');
+                return;
+            }
+            const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+            if (!youtubeRegex.test(videoUrl)) {
+                showError('Please enter a valid YouTube URL.');
+                return;
+            }
+            
+            // Reset UI state
+            resetUI();
+            setLoading(true, 'button'); // Use button loader for analysis
+
+            try {
+                // Using noembed.com to get basic video metadata first
+                const embedApiUrl = `https://noembed.com/embed?url=${encodeURIComponent(videoUrl)}`;
+                const response = await fetch(embedApiUrl);
+                if (!response.ok) {
+                    throw new Error('Could not fetch video information. The video might be private or unavailable.');
+                }
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Display video info and create download buttons
+                displayVideoInfo(data, videoUrl);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                setLoading(false, 'button');
+            }
+        });
+
+        // --- UI Update Functions ---
+
+        function resetUI() {
+            errorBox.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+            mainLoader.classList.add('hidden');
+            downloadOptionsContainer.innerHTML = ''; // Clear old buttons
+        }
+
+        function setLoading(isLoading, type = 'main') {
+            if (type === 'button') {
+                submitButton.disabled = isLoading;
+                if (isLoading) {
+                    buttonText.textContent = 'Analyzing...';
+                    searchIcon.classList.add('hidden');
+                    buttonLoader.classList.remove('hidden');
+                } else {
+                    buttonText.textContent = 'Analyze';
+                    searchIcon.classList.remove('hidden');
+                    buttonLoader.classList.add('hidden');
+                }
+            } else { // 'main' loader
+                if(isLoading) mainLoader.classList.remove('hidden');
+                else mainLoader.classList.add('hidden');
+            }
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorBox.classList.remove('hidden');
+        }
+
+        function displayVideoInfo(data, originalUrl) {
+            // Populate the video info card
+            videoTitle.textContent = data.title || 'No title found';
+            videoAuthor.textContent = `by ${data.author_name || 'Unknown author'}`;
+            videoThumbnail.src = data.thumbnail_url || 'https://placehold.co/320x180/1f2937/4b5563?text=Thumbnail';
+
+            // Define download options
+            const options = [
+                { label: 'Video (Best)', vQuality: 'max', isAudio: false },
+                { label: 'Video (1080p)', vQuality: '1080', isAudio: false },
+                { label: 'Audio (MP3)', vQuality: 'max', aFormat: 'mp3', isAudio: true },
+                { label: 'Audio (Best)', vQuality: 'max', aFormat: 'best', isAudio: true },
+            ];
+
+            // Create and append a download button for each option
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center gap-3';
+                button.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    <span>${option.label}</span>
+                    <div class="btn-loader hidden"></div>
+                `;
+                
+                // Add click event listener to handle the download
+                button.addEventListener('click', () => handleDownload(originalUrl, option, button));
+                downloadOptionsContainer.appendChild(button);
+            });
+
+            // Show the results section
+            resultsSection.classList.remove('hidden');
+        }
+
+        // --- Download Logic ---
+
+        async function handleDownload(url, option, buttonEl) {
+            const buttonSpan = buttonEl.querySelector('span');
+            const buttonLoader = buttonEl.querySelector('.btn-loader');
+
+            // Show loading state on the button
+            buttonEl.disabled = true;
+            buttonSpan.classList.add('hidden');
+            buttonLoader.classList.remove('hidden');
+            errorBox.classList.add('hidden'); // Hide main error on new attempt
+
+            try {
+                // Using a reliable public instance of Cobalt API.
+                // For production, host your own backend to avoid dependency on third parties.
+                const downloadApiUrl = 'https://co.wuk.sh/api/json';
+
+                const payload = {
+                    url: url,
+                    vQuality: option.vQuality,
+                    aFormat: option.aFormat || 'best',
+                    isAudioOnly: option.isAudio,
+                    filenamePattern: 'pretty'
+                };
+
+                const response = await fetch(downloadApiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json
