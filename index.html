@@ -1,256 +1,214 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Video Downloader</title>
-    <!-- Tailwind CSS for styling -->
+    <title>YouTube Downloader Webbapp</title>
+    
+    <!-- Tailwind CSS för styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Ikoner från Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
     <style>
-        /* Custom styles */
+        /* Anpassad stil för att använda Inter-fonten */
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Style for the button-specific loader */
-        .btn-loader {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #ef4444; /* Red color */
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        /* Smidig övergång för element som visas/döljs */
+        .smooth-transition {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
 
-    <!-- Main Container -->
-    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-3xl w-full">
+    <div class="w-full max-w-2xl mx-auto">
+        <!-- Huvudkortet för applikationen -->
+        <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl shadow-2xl p-6 md:p-8">
+            
+            <!-- Rubrik och logotyp -->
+            <div class="text-center mb-6">
+                <i class="ph-fill ph-youtube-logo text-5xl text-red-500"></i>
+                <h1 class="text-3xl font-bold mt-2">YouTube Video Downloader</h1>
+                <p class="text-gray-400 mt-1">Klistra in en YouTube-länk för att börja.</p>
+            </div>
 
-        <!-- Header -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-red-600">YouTube Video Downloader</h1>
-            <p class="text-gray-400">Paste a YouTube link to get download options.</p>
-        </div>
+            <!-- Inmatningsformulär -->
+            <form id="url-form" class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-grow">
+                    <i class="ph ph-link absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="youtube-url" placeholder="https://www.youtube.com/watch?v=..." class="w-full bg-gray-900 border border-gray-700 rounded-lg py-3 pl-12 pr-4 focus:ring-2 focus:ring-red-500 focus:outline-none transition duration-300" required>
+                </div>
+                <button type="submit" id="submit-button" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition duration-300">
+                    <i class="ph ph-arrow-down"></i>
+                    <span>Hämta Video</span>
+                </button>
+            </form>
+            <p id="error-message" class="text-red-400 text-center mt-3 hidden"></p>
 
-        <!-- URL Input Form -->
-        <form id="url-form" class="flex flex-col sm:flex-row gap-4 mb-8">
-            <input id="video-url" type="text" placeholder="https://www.youtube.com/watch?v=..." class="flex-grow bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition duration-300 w-full">
-            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 flex items-center justify-center w-full sm:w-auto">
-                <svg id="search-icon" class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                <svg id="button-loader" class="animate-spin h-6 w-6 mr-2 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span id="button-text">Analyze</span>
-            </button>
-        </form>
-        
-        <!-- Error Message Box -->
-        <div id="error-box" class="hidden mt-8 bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg" role="alert">
-            <strong class="font-bold">Error!</strong>
-            <span id="error-message" class="block sm:inline ml-2"></span>
-        </div>
-
-        <!-- Results Section -->
-        <div id="results-section" class="hidden">
-            <!-- Video Info Card -->
-            <div id="video-info" class="bg-gray-800 rounded-lg overflow-hidden flex flex-col md:flex-row items-center gap-6 p-6 mb-8">
-                <img id="video-thumbnail" src="https://placehold.co/320x180/1f2937/4b5563?text=Thumbnail" alt="Video Thumbnail" class="w-full md:w-48 h-auto rounded-md object-cover" onerror="this.onerror=null;this.src='https://placehold.co/320x180/1f2937/4b5563?text=Thumbnail';">
-                <div class="text-center md:text-left">
-                    <h2 id="video-title" class="text-xl font-bold text-white mb-1">Video Title Goes Here</h2>
-                    <p id="video-author" class="text-gray-400">by Author Name</p>
+            <!-- Resultatsektion (dold som standard) -->
+            <div id="result-section" class="mt-8 hidden opacity-0 smooth-transition">
+                <div class="bg-gray-900/70 rounded-xl p-5 flex flex-col md:flex-row gap-5 items-center">
+                    <img id="video-thumbnail" src="" alt="Videominiatyrbild" class="w-full md:w-48 h-auto rounded-lg shadow-lg object-cover">
+                    <div class="flex-grow text-center md:text-left">
+                        <h2 id="video-title" class="text-xl font-semibold">Videotitel visas här</h2>
+                        <p class="text-gray-400 text-sm">Välj ett format för att "ladda ner".</p>
+                        
+                        <!-- Fiktiva nedladdningsknappar -->
+                        <div class="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
+                            <button class="download-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center gap-2 transition"><i class="ph ph-monitor"></i>MP4 1080p</button>
+                            <button class="download-btn bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md flex items-center gap-2 transition"><i class="ph ph-monitor"></i>MP4 720p</button>
+                            <button class="download-btn bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center gap-2 transition"><i class="ph ph-speaker-simple-high"></i>MP3 128kbps</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <!-- Download Options -->
-            <div id="download-options" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <!-- Buttons will be inserted here by JavaScript -->
-            </div>
         </div>
 
+        <!-- Fotnot med förklaring -->
+        <footer class="text-center mt-6 text-xs text-gray-500">
+            <p>Denna applikation är ett designkoncept och kan inte ladda ner videor på riktigt.</p>
+            <p>Skapad för att demonstrera webbutveckling och respekterar YouTubes användarvillkor.</p>
+        </footer>
     </div>
 
+    <!-- Modal/Dialogruta för meddelande (dold som standard) -->
+    <div id="notice-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 rounded-xl shadow-2xl max-w-sm w-full p-6 text-center border border-gray-700">
+            <i class="ph-fill ph-warning-circle text-5xl text-yellow-400"></i>
+            <h3 class="text-xl font-bold mt-4">Viktig Information</h3>
+            <p class="text-gray-300 mt-2 mb-6">
+                Av upphovsrättsliga skäl och för att följa YouTubes användarvillkor kan den här applikationen inte ladda ner videor. Den är skapad som ett tekniskt exempel. Använd YouTubes officiella funktioner för att spara videor offline.
+            </p>
+            <button id="close-modal-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-5 rounded-lg w-full transition">Jag förstår</button>
+        </div>
+    </div>
+
+
     <script>
-        // --- DOM Element References ---
-        const form = document.getElementById('url-form');
-        const urlInput = document.getElementById('video-url');
-        const errorBox = document.getElementById('error-box');
+        // Hämta alla nödvändiga DOM-element
+        const urlForm = document.getElementById('url-form');
+        const urlInput = document.getElementById('youtube-url');
         const errorMessage = document.getElementById('error-message');
-        const resultsSection = document.getElementById('results-section');
+        const resultSection = document.getElementById('result-section');
         const videoThumbnail = document.getElementById('video-thumbnail');
         const videoTitle = document.getElementById('video-title');
-        const videoAuthor = document.getElementById('video-author');
-        const downloadOptionsContainer = document.getElementById('download-options');
-        const submitButton = form.querySelector('button');
-        const buttonText = document.getElementById('button-text');
-        const searchIcon = document.getElementById('search-icon');
-        const buttonLoader = submitButton.querySelector('#button-loader');
+        const noticeModal = document.getElementById('notice-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
 
-        // --- Event Listener for Form Submission ---
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const videoUrl = urlInput.value.trim();
+        /**
+         * Funktion för att extrahera YouTube-video-ID från en URL.
+         * Stöder olika URL-format (youtube.com, youtu.be, shorts, etc.).
+         * @param {string} url - YouTube-URL:en.
+         * @returns {string|null} - Video-ID om det hittas, annars null.
+         */
+        function getYouTubeID(url) {
+            const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+            const match = url.match(regex);
+            return match ? match[1] : null;
+        }
 
-            // Validate input
-            if (!videoUrl) {
-                showError('Please enter a YouTube video URL.');
-                return;
-            }
-            const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
-            if (!youtubeRegex.test(videoUrl)) {
-                showError('Please enter a valid YouTube URL.');
-                return;
-            }
+        // Hantera formulärinskickning
+        urlForm.addEventListener('submit', (e) => {
+            e.preventDefault(); // Förhindra att sidan laddas om
+            const url = urlInput.value.trim();
             
-            // Reset UI state
-            resetUI();
-            setLoading(true);
+            if (!url) {
+                showError('Fältet får inte vara tomt.');
+                return;
+            }
 
-            try {
-                // Step 1: Use a simple metadata service to get title/thumbnail quickly.
-                const embedApiUrl = `https://noembed.com/embed?url=${encodeURIComponent(videoUrl)}`;
-                const response = await fetch(embedApiUrl);
-                if (!response.ok) {
-                    throw new Error('Could not fetch video information. The video might be private or unavailable.');
-                }
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
+            const videoID = getYouTubeID(url);
 
-                // Display video info and create download buttons
-                displayVideoInfo(data, videoUrl);
-
-            } catch (error) {
-                showError(error.message);
-            } finally {
-                setLoading(false);
+            if (videoID) {
+                // Om ett giltigt video-ID hittades
+                hideError();
+                displayResults(videoID);
+            } else {
+                // Om inget giltigt video-ID hittades
+                showError('Ogiltig YouTube-länk. Kontrollera URL:en och försök igen.');
+                hideResults();
             }
         });
 
-        // --- UI Update Functions ---
+        /**
+         * Visar resultatsektionen med videoinformation.
+         * @param {string} videoID - Det extraherade video-ID:t.
+         */
+        function displayResults(videoID) {
+            // Skapa URL till miniatyrbilden i högsta kvalitet
+            const thumbnailUrl = `https://img.youtube.com/vi/${videoID}/maxresdefault.jpg`;
+            videoThumbnail.src = thumbnailUrl;
+            
+            // Hantera om högupplöst miniatyrbild inte finns
+            videoThumbnail.onerror = () => {
+                videoThumbnail.src = `https://img.youtube.com/vi/${videoID}/hqdefault.jpg`;
+            };
 
-        function resetUI() {
-            errorBox.classList.add('hidden');
-            resultsSection.classList.add('hidden');
-            downloadOptionsContainer.innerHTML = ''; // Clear old buttons
+            videoTitle.textContent = 'Video hittad! Välj format.'; // Fiktiv titel
+            
+            // Visa resultatsektionen med en mjuk övergång
+            resultSection.classList.remove('hidden');
+            setTimeout(() => {
+                resultSection.style.transform = 'translateY(0)';
+                resultSection.style.opacity = '1';
+            }, 10);
         }
 
-        function setLoading(isLoading) {
-            submitButton.disabled = isLoading;
-            if (isLoading) {
-                buttonText.textContent = 'Analyzing...';
-                searchIcon.classList.add('hidden');
-                buttonLoader.classList.remove('hidden');
-            } else {
-                buttonText.textContent = 'Analyze';
-                searchIcon.classList.remove('hidden');
-                buttonLoader.classList.add('hidden');
-            }
-        }
-
+        /**
+         * Funktion för att visa ett felmeddelande.
+         * @param {string} message - Meddelandet som ska visas.
+         */
         function showError(message) {
             errorMessage.textContent = message;
-            errorBox.classList.remove('hidden');
+            errorMessage.classList.remove('hidden');
         }
 
-        function displayVideoInfo(data, originalUrl) {
-            // Populate the video info card
-            videoTitle.textContent = data.title || 'No title found';
-            videoAuthor.textContent = `by ${data.author_name || 'Unknown author'}`;
-            videoThumbnail.src = data.thumbnail_url || 'https://placehold.co/320x180/1f2937/4b5563?text=Thumbnail';
+        /**
+         * Döljer felmeddelandet.
+         */
+        function hideError() {
+            errorMessage.classList.add('hidden');
+        }
+        
+        /**
+         * Döljer resultatsektionen.
+         */
+        function hideResults() {
+             resultSection.style.opacity = '0';
+             resultSection.style.transform = 'translateY(-20px)';
+             setTimeout(() => {
+                resultSection.classList.add('hidden');
+             }, 500);
+        }
 
-            // Define download options
-            const options = [
-                { label: 'Video (Best)', vQuality: 'max', isAudio: false },
-                { label: 'Video (1080p)', vQuality: '1080', isAudio: false },
-                { label: 'Audio (MP3)', vQuality: 'max', aFormat: 'mp3', isAudio: true },
-                { label: 'Audio (Best)', vQuality: 'max', aFormat: 'best', isAudio: true },
-            ];
-
-            // Create and append a download button for each option
-            options.forEach(option => {
-                const button = document.createElement('button');
-                button.className = 'bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center gap-3';
-                button.innerHTML = `
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    <span>${option.label}</span>
-                    <div class="btn-loader hidden"></div>
-                `;
-                
-                // Add click event listener to handle the download
-                button.addEventListener('click', () => handleDownload(originalUrl, option, button));
-                downloadOptionsContainer.appendChild(button);
+        // Lägg till händelselyssnare för alla "nedladdningsknappar"
+        document.querySelectorAll('.download-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                // Visa modalen istället för att ladda ner
+                noticeModal.classList.remove('hidden');
             });
+        });
 
-            // Show the results section
-            resultsSection.classList.remove('hidden');
-        }
-
-        // --- Download Logic ---
-
-        async function handleDownload(url, option, buttonEl) {
-            const buttonSpan = buttonEl.querySelector('span');
-            const buttonLoader = buttonEl.querySelector('.btn-loader');
-
-            // Show loading state on the button
-            buttonEl.disabled = true;
-            buttonSpan.classList.add('hidden');
-            buttonLoader.classList.remove('hidden');
-            errorBox.classList.add('hidden'); // Hide main error on new attempt
-
-            try {
-                // Step 2: Call the download processing API when a button is clicked.
-                const downloadApiUrl = 'https://api.cobalt.tools/api/json';
-
-                const payload = {
-                    url: url,
-                    vQuality: option.vQuality,
-                    aFormat: option.aFormat || 'best',
-                    isAudioOnly: option.isAudio,
-                    filenamePattern: 'pretty'
-                };
-
-                const response = await fetch(downloadApiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await response.json();
-
-                // Handle API response
-                if (data.status === 'error') {
-                    throw new Error(data.text || 'The API returned an error. The video might be region-locked or private.');
-                }
-
-                if (data.status === 'redirect' || data.status === 'stream') {
-                    // Open the download link in a new tab
-                    window.open(data.url, '_blank');
-                } else {
-                     throw new Error(`Unexpected API status: ${data.status}. Please try again.`);
-                }
-
-            } catch (error) {
-                showError(error.message);
-            } finally {
-                // Reset button state
-                buttonEl.disabled = false;
-                buttonSpan.classList.remove('hidden');
-                buttonLoader.classList.add('hidden');
+        // Händelselyssnare för att stänga modalen
+        closeModalBtn.addEventListener('click', () => {
+            noticeModal.classList.add('hidden');
+        });
+        
+        // Stäng även modalen om man klickar på bakgrunden
+        noticeModal.addEventListener('click', (e) => {
+            if (e.target === noticeModal) {
+                 noticeModal.classList.add('hidden');
             }
-        }
+        });
+
     </script>
 </body>
 </html>
