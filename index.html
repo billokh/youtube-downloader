@@ -17,11 +17,9 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <style>
-        /* Anpassad stil för att använda Inter-fonten */
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Smidig övergång för element som visas/döljs */
         .smooth-transition {
             transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
         }
@@ -59,13 +57,11 @@
                     <img id="video-thumbnail" src="" alt="Videominiatyrbild" class="w-full md:w-48 h-auto rounded-lg shadow-lg object-cover">
                     <div class="flex-grow text-center md:text-left">
                         <h2 id="video-title" class="text-xl font-semibold">Videotitel visas här</h2>
-                        <p class="text-gray-400 text-sm">Välj ett format för att "ladda ner".</p>
+                        <p class="text-gray-400 text-sm">Välj ett format för att ladda ner.</p>
                         
-                        <!-- Fiktiva nedladdningsknappar -->
-                        <div class="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
-                            <button class="download-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center gap-2 transition"><i class="ph ph-monitor"></i>MP4 1080p</button>
-                            <button class="download-btn bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md flex items-center gap-2 transition"><i class="ph ph-monitor"></i>MP4 720p</button>
-                            <button class="download-btn bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center gap-2 transition"><i class="ph ph-speaker-simple-high"></i>MP3 128kbps</button>
+                        <!-- Dynamiska nedladdningsknappar -->
+                        <div id="download-buttons" class="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
+                            <!-- Knappar genereras dynamiskt -->
                         </div>
                     </div>
                 </div>
@@ -74,8 +70,8 @@
 
         <!-- Fotnot med förklaring -->
         <footer class="text-center mt-6 text-xs text-gray-500">
-            <p>Denna applikation är ett designkoncept och kan inte ladda ner videor på riktigt.</p>
-            <p>Skapad för att demonstrera webbutveckling och respekterar YouTubes användarvillkor.</p>
+            <p>Denna applikation är ett tekniskt exempel och bör användas ansvarsfullt.</p>
+            <p>Respektera YouTubes användarvillkor och upphovsrättslagar.</p>
         </footer>
     </div>
 
@@ -85,12 +81,11 @@
             <i class="ph-fill ph-warning-circle text-5xl text-yellow-400"></i>
             <h3 class="text-xl font-bold mt-4">Viktig Information</h3>
             <p class="text-gray-300 mt-2 mb-6">
-                Av upphovsrättsliga skäl och för att följa YouTubes användarvillkor kan den här applikationen inte ladda ner videor. Den är skapad som ett tekniskt exempel. Använd YouTubes officiella funktioner för att spara videor offline.
+                Av upphovsrättsliga skäl och för att följa YouTubes användarvillkor, använd denna applikation endast för videor du har rätt att ladda ner (t.ex. Creative Commons). Använd YouTubes officiella funktioner för att spara videor offline om möjligt.
             </p>
             <button id="close-modal-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-5 rounded-lg w-full transition">Jag förstår</button>
         </div>
     </div>
-
 
     <script>
         // Hämta alla nödvändiga DOM-element
@@ -100,15 +95,11 @@
         const resultSection = document.getElementById('result-section');
         const videoThumbnail = document.getElementById('video-thumbnail');
         const videoTitle = document.getElementById('video-title');
+        const downloadButtonsContainer = document.getElementById('download-buttons');
         const noticeModal = document.getElementById('notice-modal');
         const closeModalBtn = document.getElementById('close-modal-btn');
 
-        /**
-         * Funktion för att extrahera YouTube-video-ID från en URL.
-         * Stöder olika URL-format (youtube.com, youtu.be, shorts, etc.).
-         * @param {string} url - YouTube-URL:en.
-         * @returns {string|null} - Video-ID om det hittas, annars null.
-         */
+        // Funktion för att extrahera YouTube-video-ID från en URL
         function getYouTubeID(url) {
             const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
             const match = url.match(regex);
@@ -116,99 +107,112 @@
         }
 
         // Hantera formulärinskickning
-        urlForm.addEventListener('submit', (e) => {
-            e.preventDefault(); // Förhindra att sidan laddas om
+        urlForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
             const url = urlInput.value.trim();
-            
+
             if (!url) {
                 showError('Fältet får inte vara tomt.');
                 return;
             }
 
             const videoID = getYouTubeID(url);
-
-            if (videoID) {
-                // Om ett giltigt video-ID hittades
-                hideError();
-                displayResults(videoID);
-            } else {
-                // Om inget giltigt video-ID hittades
+            if (!videoID) {
                 showError('Ogiltig YouTube-länk. Kontrollera URL:en och försök igen.');
                 hideResults();
+                return;
             }
+
+            hideError();
+            await fetchVideoInfo(url);
         });
 
-        /**
-         * Visar resultatsektionen med videoinformation.
-         * @param {string} videoID - Det extraherade video-ID:t.
-         */
-        function displayResults(videoID) {
-            // Skapa URL till miniatyrbilden i högsta kvalitet
-            const thumbnailUrl = `https://img.youtube.com/vi/${videoID}/maxresdefault.jpg`;
-            videoThumbnail.src = thumbnailUrl;
-            
-            // Hantera om högupplöst miniatyrbild inte finns
-            videoThumbnail.onerror = () => {
-                videoThumbnail.src = `https://img.youtube.com/vi/${videoID}/hqdefault.jpg`;
-            };
+        // Hämta videoinformation från tredjeparts-API
+        async function fetchVideoInfo(url) {
+            try {
+                // Exempel på tredjeparts-API-anrop (t.ex. y2mate.is eller liknande)
+                const apiUrl = `https://api.y2mate.is/v1/analyze`; // Ersätt med ett fungerande API
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
 
-            videoTitle.textContent = 'Video hittad! Välj format.'; // Fiktiv titel
-            
-            // Visa resultatsektionen med en mjuk övergång
-            resultSection.classList.remove('hidden');
-            setTimeout(() => {
-                resultSection.style.transform = 'translateY(0)';
-                resultSection.style.opacity = '1';
-            }, 10);
+                if (!response.ok) {
+                    throw new Error('Kunde inte hämta videoinformation.');
+                }
+
+                const data = await response.json();
+
+                if (data.status !== 'success') {
+                    showError(data.message || 'Kunde inte hämta videoinformation.');
+                    hideResults();
+                    return;
+                }
+
+                // Visa videoinformation
+                videoThumbnail.src = data.thumbnail || `https://img.youtube.com/vi/${getYouTubeID(url)}/hqdefault.jpg`;
+                videoTitle.textContent = data.title || 'Video hittad! Välj format.';
+
+                // Rensa gamla knappar
+                downloadButtonsContainer.innerHTML = '';
+
+                // Skapa dynamiska nedladdningsknappar
+                const formats = data.formats.filter(f => ['mp4', 'm4a'].includes(f.ext)).slice(0, 3);
+                formats.forEach(format => {
+                    const button = document.createElement('button');
+                    button.className = 'download-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center gap-2 transition';
+                    button.innerHTML = `<i class="ph ph-monitor"></i>${format.ext.toUpperCase()} ${format.quality || format.format}`;
+                    button.addEventListener('click', () => {
+                        // Öppna nedladdningslänken i en ny flik
+                        window.open(format.url, '_blank');
+                    });
+                    downloadButtonsContainer.appendChild(button);
+                });
+
+                // Visa resultatsektionen
+                resultSection.classList.remove('hidden');
+                setTimeout(() => {
+                    resultSection.style.transform = 'translateY(0)';
+                    resultSection.style.opacity = '1';
+                }, 10);
+            } catch (error) {
+                showError('Ett fel uppstod: ' + error.message);
+                hideResults();
+            }
         }
 
-        /**
-         * Funktion för att visa ett felmeddelande.
-         * @param {string} message - Meddelandet som ska visas.
-         */
+        // Visa/dölj felmeddelanden och resultat
         function showError(message) {
             errorMessage.textContent = message;
             errorMessage.classList.remove('hidden');
         }
 
-        /**
-         * Döljer felmeddelandet.
-         */
         function hideError() {
             errorMessage.classList.add('hidden');
         }
-        
-        /**
-         * Döljer resultatsektionen.
-         */
+
         function hideResults() {
-             resultSection.style.opacity = '0';
-             resultSection.style.transform = 'translateY(-20px)';
-             setTimeout(() => {
-                resultSection.classList.add('hidden');
-             }, 500);
+            resultSection.style.opacity = '0';
+            resultSection.style.transform = 'translateY(-20px)';
+            setTimeout(() => resultSection.classList.add('hidden'), 500);
         }
 
-        // Lägg till händelselyssnare för alla "nedladdningsknappar"
-        document.querySelectorAll('.download-btn').forEach(button => {
-            button.addEventListener('click', () => {
-                // Visa modalen istället för att ladda ner
-                noticeModal.classList.remove('hidden');
-            });
-        });
-
-        // Händelselyssnare för att stänga modalen
+        // Hantera modal
         closeModalBtn.addEventListener('click', () => {
             noticeModal.classList.add('hidden');
         });
-        
-        // Stäng även modalen om man klickar på bakgrunden
+
         noticeModal.addEventListener('click', (e) => {
             if (e.target === noticeModal) {
-                 noticeModal.classList.add('hidden');
+                noticeModal.classList.add('hidden');
             }
         });
 
+        // Visa modal vid första laddning
+        window.addEventListener('load', () => {
+            noticeModal.classList.remove('hidden');
+        });
     </script>
 </body>
 </html>
